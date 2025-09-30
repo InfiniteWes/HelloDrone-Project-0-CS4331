@@ -59,6 +59,55 @@ def take_off_simple(scf):
         time.sleep(3)
         mc.stop()
 
+def move_every_direction(scf):
+    with MotionCommander(scf, default_height=DEFAULT_HEIGHT) as mc:
+        time.sleep(3)  # Hover in place for 3 seconds
+
+        # We can move in all directions
+        print('Moving forward 0.1m')
+        mc.forward(0.3)
+        # Wait a bit
+        time.sleep(1)
+        print('Moving up 0.1m')
+        mc.up(0.1)
+    #    Wait a bit
+        time.sleep(1)
+        print('Rolling right 0.1m at 0.5 m/s and 270deg circle');
+        mc.circle_right(0.1, velocity=0.5, angle_degrees=270)
+        print('Moving down 0.1m')
+        mc.down(0.3)
+        # Wait a bit
+        time.sleep(1)
+
+        print('Rolling left 0.1m at 0.6m/s')
+        mc.left(0.3, velocity=0.4)
+        # Wait a bit
+        time.sleep(1)
+        print('Moving forward 0.1m')
+        mc.forward(0.3)
+
+
+        print("Landing...")
+        mc.stop()  # Land the drone safel
+
+def move_linear_simple(scf):
+    with MotionCommander(scf, default_height=DEFAULT_HEIGHT) as mc:
+        time.sleep(1)
+        mc.forward(0.5)
+        time.sleep(1)
+        mc.back(0.5)
+        time.sleep(1)
+
+
+def move_angular_simple(scf):
+    with MotionCommander(scf, default_height=DEFAULT_HEIGHT) as mc:
+        time.sleep(1)
+        mc.left(0.5)
+        time.sleep(1)
+        mc.right(0.5)
+        time.sleep(1)
+        mc.stop()
+
 # -------------------------------------------------------
 
 if __name__ == '__main__':
@@ -79,4 +128,5 @@ if __name__ == '__main__':
             print('No flow deck detected! Exiting...')
             sys.exit(1)
 
-        take_off_simple(scf)
+        # Execute move in all directions
+        move_every_direction(scf)
