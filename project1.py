@@ -12,6 +12,7 @@ from cflib.positioning.motion_commander import MotionCommander
 from cflib.utils import uri_helper
 
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 
 # The following script initiates the drone, checks for the necessary sensor decks,
 # and executes a simple takeoff and landing maneuver.
@@ -75,13 +76,18 @@ def move_box_limit(scf):
 def plot_path_positions():
     x_coords = [pos[0] for pos in positions]
     y_coords = [pos[1] for pos in positions]
+    z_coords = [DEFAULT_HEIGHT] * len(positions)
 
     plt.figure()
-    plt.plot(x_coords, y_coords, marker='o')
-    plt.title("Drone Path")
-    plt.xlabel("X Position (m)")
-    plt.ylabel("Y Position (m)")
-    plt.grid()
+    ax = plt.axes(projection='3d')
+    ax.plot(x_coords, y_coords, z_coords, marker='o')
+    ax.set_title("Drone Path in 3D")
+    ax.set_xlabel("X Position (m)")
+    ax.set_ylabel("Y Position (m)")
+    ax.set_zlabel("Z Position (m)")
+    ax.set_xlim([-BOX_LIMIT, BOX_LIMIT])
+    ax.set_ylim([-BOX_LIMIT, BOX_LIMIT])
+    ax.set_zlim([0, DEFAULT_HEIGHT])
     plt.show()
 
 def take_off_simple(scf):
