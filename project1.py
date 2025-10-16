@@ -40,7 +40,7 @@ MOVE_DURATION: float = 2       # Defines the seconds the drone stays in the dest
 MAX_RUN_TIME: float = 30       # Defines the maximum run time for the drone.
 MAX_DUMMIES = 2                #
 INIT_POS: tuple = (0.0, 0.0)
-PATH = []
+NUM_MISSIONS: int = 2
 
 
 
@@ -174,10 +174,46 @@ def move_box_limit(scf, path: List[tuple]) -> List[tuple]:
             mc.start_linear_motion(x, y, 0)
             time.sleep(MOVE_DURATION)
         
-        # Stop at final position
-        mc.stop()
     
     return positions
+
+
+
+def execute_mission(scf, destinations: List[tuple]):
+    """
+    Execute multiple missions with different destinations
+    
+    Args:
+        scf: SyncCrazyflie instance
+        destinations: List of (x,y) destination points to visit
+    """
+    all_positions = []  # Store all positions for final plotting
+    
+    for mission_num, dest in enumerate(destinations, 1):
+        print(f"\n=== Starting Mission {mission_num} ===")
+        print(f"From {INIT_POS} to {dest}")
+        
+        # Create path for this mission
+        box = create_box(init_pos=INIT_POS, dest=dest)
+        way_points = generate_points(2, box=box)
+        curr_path = create_path(r_wp=way_points, destination=dest, box=box)
+        
+        # Execute path and store positions
+        positions = move_box_limit(scf, curr_path)
+        all_positions.extend(positions)
+        
+        
+        print(f"=== Mission {mission_num} Completed ===")
+    
+    # Plot the complete path after all missions
+    with MotionCommander(scf, default_height=DEFAULT_HEIGHT) as mc:
+        mc.stop()
+    plot_path_positions(all_positions)
+    
+
+    
+    
+    
 
 def plot_path_positions(positions: List[tuple]):
     """
@@ -227,17 +263,14 @@ if __name__ == '__main__':
             print('No flow deck detected! Exiting...')
             sys.exit(1)
 
-        
-        # ===== Create Path Information ======
-        destination = (0.4, -0.3)
-        print(f"\nPlanning path to destination: {destination}")
-        
-        box = create_box(init_pos=INIT_POS, dest=destination)
-        way_points = generate_points(2, box=box)
-        curr_path = create_path(way_points, destination=destination, box=box)
-        
-        # Execute path and store positions
-        positions = move_box_limit(scf, curr_path)
-        
-        # Plot the actual path taken
-        plot_path_positions(positions)
+        destinations = [
+            (0.4, -0.3),   # 1st destination
+            (-0.3, 0.4),   # 2nd destination
+  
+        ]
+
+        # Execute missions for each destination
+        execute_mission(scf, destinations)
+
+
+
