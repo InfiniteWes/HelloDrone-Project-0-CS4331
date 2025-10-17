@@ -20,17 +20,12 @@ from typing import List, Any, Dict, Tuple
 # and executes a simple takeoff and landing maneuver.
 
 # Defining the URI
-
-
-# REMEMBER TO UNCOMMENT
 URI = uri_helper.uri_from_env(default='radio://0/80/2M/E7E7E7E7E7')
 
 # # Event used to detect if the necessary deck it attached.
-# REMEMBER TO UNCOMMENT
 deck_attached_event = Event()
 
 # # Set logging level to suppress detailed debug logs
-# REMEMBER TO UNCOMMENT
 logging.basicConfig(level=logging.ERROR)
 
 DEFAULT_HEIGHT = 0.5    # Default flight height in meters
@@ -72,9 +67,7 @@ def get_next_destination() -> Tuple[float, float]:
     Returns:
         Tuple[float, float]: Next destination coordinates
     """
-    # For now, generate a point just outside current box
-    # You can modify this logic based on project requirements
-    x = random.choice([-BOX_LIMIT, BOX_LIMIT])
+    x = random.choice([-BOX_LIMIT, BOX_LIMIT]) # Using the same Box Limits for creating the new box from the last point / intermediate final point
     y = random.choice([-BOX_LIMIT, BOX_LIMIT])
     return (x, y)
 
@@ -228,8 +221,6 @@ def plot_path_positions():
 #     with MotionCommander(scf, default_height=DEFAULT_HEIGHT) as mc:
 #         time.sleep(3)
 #         mc.stop()
-
-# -------------------------------------------------------
 
 if __name__ == '__main__':
  print("Initializing drivers...")
