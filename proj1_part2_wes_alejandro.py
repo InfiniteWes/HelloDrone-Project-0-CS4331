@@ -105,8 +105,8 @@ def execute_waypoint_mission(scf):
         print("Starting waypoint mission...")
         
         # First destination: Run waypoint mission from current location
-        for NUMBER_OF_BOXES in range(0, 2):  # Run mission twice
-            print(f"\n=== MISSION {NUMBER_OF_BOXES} ===")
+        for _ in range(0, 2):  # Run mission twice
+            print(f"\n=== Number of Boxes is {NUMBER_OF_BOXES} ===")
 
             # Create path for current mission
             full_path, dummy_waypoints, final_destination = create_path_with_waypoints_and_destination()
@@ -129,7 +129,7 @@ def execute_waypoint_mission(scf):
             mc.start_linear_motion(dest_x, dest_y, 0)
             time.sleep(MOVE_DURATION)
 
-            print(f"Box {NUMBER_OF_BOXES} completed!")
+            print(f"Box {_} completed!")
 
         print("\nAll Boxes completed!")
         mc.stop() 
@@ -197,6 +197,8 @@ def plot_path_positions():
     if len(x_coords) > 0:
         ax.scatter([x_coords[0]], [y_coords[0]], [z_coords[0]], 
                   color='green', s=100, label='Start')
+        
+    # Hardcoded coloring for dummy waypoints and final points
     ax.scatter([x_coords[1]], [y_coords[1]], [z_coords[1]], color='blue', s=100, label='dummy')
     ax.scatter([x_coords[2]], [y_coords[2]], [z_coords[2]], color='blue', s=100, label='dummy')
     ax.scatter([x_coords[3]], [y_coords[3]], [z_coords[3]], color='purple', s=100, label='Intermediate Final')
