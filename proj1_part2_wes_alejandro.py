@@ -20,17 +20,12 @@ from typing import List, Any, Dict, Tuple
 # and executes a simple takeoff and landing maneuver.
 
 # Defining the URI
-
-
-# REMEMBER TO UNCOMMENT
 URI = uri_helper.uri_from_env(default='radio://0/80/2M/E7E7E7E7E7')
 
 # # Event used to detect if the necessary deck it attached.
-# REMEMBER TO UNCOMMENT
 deck_attached_event = Event()
 
 # # Set logging level to suppress detailed debug logs
-# REMEMBER TO UNCOMMENT
 logging.basicConfig(level=logging.ERROR)
 
 DEFAULT_HEIGHT = 0.5    # Default flight height in meters
@@ -72,9 +67,7 @@ def get_next_destination() -> Tuple[float, float]:
     Returns:
         Tuple[float, float]: Next destination coordinates
     """
-    # For now, generate a point just outside current box
-    # You can modify this logic based on project requirements
-    x = random.choice([-BOX_LIMIT, BOX_LIMIT])
+    x = random.choice([-BOX_LIMIT, BOX_LIMIT]) # Using the same Box Limits for creating the new box from the last point / intermediate final point
     y = random.choice([-BOX_LIMIT, BOX_LIMIT])
     return (x, y)
 
@@ -112,8 +105,8 @@ def execute_waypoint_mission(scf):
         print("Starting waypoint mission...")
         
         # First destination: Run waypoint mission from current location
-        for NUMBER_OF_BOXES in range(0, 2):  # Run mission twice
-            print(f"\n=== MISSION {NUMBER_OF_BOXES} ===")
+        for _ in range(0, 2):  # Run mission twice
+            print(f"\n=== Number of Boxes is {NUMBER_OF_BOXES} ===")
 
             # Create path for current mission
             full_path, dummy_waypoints, final_destination = create_path_with_waypoints_and_destination()
@@ -136,7 +129,7 @@ def execute_waypoint_mission(scf):
             mc.start_linear_motion(dest_x, dest_y, 0)
             time.sleep(MOVE_DURATION)
 
-            print(f"Box {NUMBER_OF_BOXES} completed!")
+            print(f"Box {_} completed!")
 
         print("\nAll Boxes completed!")
         mc.stop() 
@@ -204,6 +197,8 @@ def plot_path_positions():
     if len(x_coords) > 0:
         ax.scatter([x_coords[0]], [y_coords[0]], [z_coords[0]], 
                   color='green', s=100, label='Start')
+        
+    # Hardcoded coloring for dummy waypoints and final points
     ax.scatter([x_coords[1]], [y_coords[1]], [z_coords[1]], color='blue', s=100, label='dummy')
     ax.scatter([x_coords[2]], [y_coords[2]], [z_coords[2]], color='blue', s=100, label='dummy')
     ax.scatter([x_coords[3]], [y_coords[3]], [z_coords[3]], color='purple', s=100, label='Intermediate Final')
@@ -228,8 +223,6 @@ def plot_path_positions():
 #     with MotionCommander(scf, default_height=DEFAULT_HEIGHT) as mc:
 #         time.sleep(3)
 #         mc.stop()
-
-# -------------------------------------------------------
 
 if __name__ == '__main__':
  print("Initializing drivers...")
