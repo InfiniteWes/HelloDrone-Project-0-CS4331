@@ -1,192 +1,93 @@
-import signal
+"""
+Example script that allows a user to "push" the Crazyflie 2.1+ around
+using their hands while it's hovering.
+
+This example uses the Flow and Multi-ranger decks to measure distances
+in all directions and tries to keep away from anything that comes closer
+than 0.2m by setting a velocity in the opposite direction.
+
+The demo is ended by either pressing Ctrl-C or by holding your hand above the
+Crazyflie.
+"""
+
 import logging
 import sys
 import time
-import matplotlib.pyplot as plt
-
 import cflib.crtp
 from cflib.crazyflie import Crazyflie
-from cflib.crazyflie.log import LogConfig
 from cflib.crazyflie.syncCrazyflie import SyncCrazyflie
 from cflib.positioning.motion_commander import MotionCommander
 from cflib.utils import uri_helper
-from cflib.utils.multiranger import Multiranger 
+from cflib.utils.multiranger import Multiranger
 
 # Define the default URI for communication with the Crazyflie
 URI = uri_helper.uri_from_env(default='radio://0/80/2M/E7E7E7E7E5')
 
-# Flight parameters
-DEFAULT_HEIGHT = 0.5
-MIN_DISTANCE = 0.2  
-BOX_LIMIT = .5
-GOAL_X = .4
-BUFFER = 0.05  
-VELOCITY = 0.15  
-MAX_RUN_TIME = 180
-
-# Position Tracking
-position_estimate = [0, 0]  
-position_x, position_y = [], []  
-
-# Global flag to stop flight safely
-keep_flying = True  
+# Only output errors from the logging framework
+logging.basicConfig(level=logging.ERROR)
 
 
-"---------------------------------------------------------------------------"
-"""Handles Ctrl+C (SIGINT) to land the drone safely."""
-def signal_handler(sig, frame):
-    global keep_flying
-    print("\nCtrl+C detected! Landing the drone safely...")
-    keep_flying = False  # Stop the main loop
-"---------------------------------------------------------------------------"
+# ---------------------------------------------------------------------------
+def is_close(range_value):
+    """
+    Check if an object is too close to the drone.
 
+    Args:
+        range_value (float or None): Distance measured by the sensor.
 
-# Register the Ctrl+C signal handler
-signal.signal(signal.SIGINT, signal_handler)
-
-
-"---------------------------------------------------------------------------"
-"""Check if an object is too close to the drone."""
-def is_close(range):
-    return range is not None and range < MIN_DISTANCE
-"---------------------------------------------------------------------------"
-
-
-"---------------------------------------------------------------------------"
-""" Updates position estimate and stores data for visualization """
-def log_pos_callback(timestamp, data, logconf):
-    global position_estimate, position_x, position_y
-    position_estimate[0] = data['stateEstimate.x']
-    position_estimate[1] = data['stateEstimate.y']
-    position_x.append(position_estimate[0])
-    position_y.append(position_estimate[1])
-"---------------------------------------------------------------------------"
-
-
-"---------------------------------------------------------------------------"
-"""Plots the drone's movement in 2D space."""
-def plot_position_data():
-    plt.figure(figsize=(8, 6))
-    plt.plot(position_x, position_y, marker='o', linestyle='-', markersize=3, label="Drone Path")
-    plt.xlabel("X Position")
-    plt.ylabel("Y Position")
-    plt.title("Drone Movement Path")
-    plt.legend()
-    plt.grid(True)
-    plt.show()
-"---------------------------------------------------------------------------"
+    Returns:
+        bool: True if the object is closer than the minimum distance, otherwise False.
+    """
+    MIN_DISTANCE = 0.2  # Minimum allowed distance in meters
+    if range_value is None:
+        return False
+    else:
+        return range_value < MIN_DISTANCE
+# ---------------------------------------------------------------------------
 
 
 if __name__ == '__main__':
+    # Initialize the low-level drivers for Crazyflie communication
     cflib.crtp.init_drivers()
-    
-    with SyncCrazyflie(URI, cf=Crazyflie(rw_cache='./cache')) as scf:
+
+    # Create a Crazyflie object with a cache for parameters
+    cf = Crazyflie(rw_cache='./cache')
+
+    # Establish a synchronous connection to the Crazyflie
+    with SyncCrazyflie(URI, cf=cf) as scf:
+        # Send an arming request to enable the drone for flight
         scf.cf.platform.send_arming_request(True)
-        time.sleep(1.0)
+        time.sleep(1.0)  # Wait for arming process to complete
 
-        # Enable position logging
-        logconf = LogConfig(name='Position', period_in_ms=10)
-        logconf.add_variable('stateEstimate.x', 'float')
-        logconf.add_variable('stateEstimate.y', 'float')
-        scf.cf.log.add_config(logconf)
-        logconf.data_received_cb.add_callback(log_pos_callback)
-        logconf.start()
-
-        with MotionCommander(scf, default_height=DEFAULT_HEIGHT) as motion_commander:
+        # Enter motion control mode
+        with MotionCommander(scf) as motion_commander:
+            # Activate the Multi-ranger deck for distance sensing
             with Multiranger(scf) as multiranger:
-                right = 1
-                start = time.time()
-                try:
-                    while keep_flying:
-                        elapsed_time = time.time() - start_time  # Calculate elapsed time
+                keep_flying = True  # Flag to control the flight loop
 
-                        # **Check if time limit is reached**
-                        if elapsed_time >= MAX_RUN_TIME:
-                            print("Time limit reached! Landing the drone safely.")
-                            motion_commander.land()
-                            break
+                while keep_flying:
+                    VELOCITY = 0.5  # Movement speed in meters per second
+                    velocity_x = 0.0  # Initial horizontal velocity in X-axis
+                    velocity_y = 0.0  # Initial horizontal velocity in Y-axis
 
-                        velocity_x, velocity_y = VELOCITY, 0.0
+                    # Adjust velocity based on proximity to obstacles
+                    if is_close(multiranger.front):  # Object detected in front
+                        velocity_x -= VELOCITY  # Move backward
+                    if is_close(multiranger.back):  # Object detected behind
+                        velocity_x += VELOCITY  # Move forward
+                    if is_close(multiranger.left):  # Object detected on the left
+                        velocity_y -= VELOCITY  # Move right
+                    if is_close(multiranger.right):  # Object detected on the right
+                        velocity_y += VELOCITY  # Move left
 
-                        # **Check if drone has reached the goal**
-                        if position_estimate[0] >= GOAL_X:
-                            print("Goal reached! Landing.")
-                            motion_commander.land()
-                            break
+                    # If an object is detected above, stop flying
+                    if is_close(multiranger.up):
+                        keep_flying = False
 
-                        # **Obstacle Avoidance**
-                        if is_close(multiranger.front):
-                            print("Object detected in front! Stopping.")
-                            motion_commander.stop()
-                            time.sleep(0.5)
+                    # Apply calculated velocity values to move the drone
+                    motion_commander.start_linear_motion(velocity_x, velocity_y, 0)
 
-                            print("Moving backward.")
-                            motion_commander.start_linear_motion(-VELOCITY, 0, 0)
-                            time.sleep(1)
-                            motion_commander.stop()
+                    # Short delay before checking sensors again
+                    time.sleep(0.1)
 
-                            if right == 1:
-                                print("Moving right.")
-                                motion_commander.start_linear_motion(0, -VELOCITY, 0)
-                            else:
-                                print("Moving left.")       
-                                motion_commander.start_linear_motion(0, VELOCITY, 0)
-                            
-                            time.sleep(1)
-                            motion_commander.stop()
-
-                        # **Boundary Handling**
-                        if position_estimate[0] > BOX_LIMIT:
-                            print("Hit right boundary, stopping.")
-                            motion_commander.stop()
-                            time.sleep(0.5)
-
-                            print("Moving left.")
-                            motion_commander.start_linear_motion(0, VELOCITY, 0)  # move left
-                            time.sleep(1)
-                            motion_commander.stop()
-                            right = 0 
-
-                            print("Continuing forward.")
-
-                        elif position_estimate[0] < -BOX_LIMIT:
-                            print("Hit left boundary, stopping.")
-                            motion_commander.stop()
-                            time.sleep(0.5)
-
-                            print("Moving right.")
-                            motion_commander.start_linear_motion(0, -VELOCITY, 0)  # move right
-                            time.sleep(1)
-                            motion_commander.stop()
-                            right = 1
-                            print("Continuing forward.")
-
-                        elif position_estimate[1] > BOX_LIMIT:
-                            print("Hit upper boundary, stopping")
-                            motion_commander.stop()
-                            time.sleep(.5)
-
-                            print("Moving Down")
-                            motion_commander.start_linear_motion(VELOCITY , 0, 0)  # move down
-                            time.sleep(1)
-                            motion_commander.stop()
-
-                        if is_close(multiranger.up):  # If ceiling is detected
-                            print("Ceiling detected! Stopping.")
-                            keep_flying = False
-
-                        # **Move if no obstacles detected**
-                        if not is_close(multiranger.front):
-                            motion_commander.start_linear_motion(velocity_x, velocity_y, 0)
-
-                        time.sleep(0.1)
-
-                except KeyboardInterrupt:
-                    print("\nEmergency stop triggered (Ctrl+C). Landing now...")
-                    motion_commander.land()
-                    time.sleep(1)
-
-        logconf.stop()
-
-    # Plot recorded position data after flight
-    plot_position_data()
+                print('Demo terminated!')
