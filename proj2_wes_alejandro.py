@@ -263,6 +263,7 @@ def drone_game(scf):
             print("Better luck next time! The drone won.")
 
         mc.stop()
+
 # -------------------------------------------------------
 
 if __name__ == '__main__':
